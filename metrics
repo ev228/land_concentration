@@ -1,0 +1,42 @@
+# Load necessary libraries
+library(dplyr)
+library(readxl)
+
+# Load the data
+data <- read_excel("/path/to/your/file/tierra_2021_totales.xlsx")
+
+# Function to calculate land control percentages
+calculate_land_percentage <- function(df, percentage) {
+  sorted_df <- df %>% arrange(desc(tierra))
+  top_n <- ceiling(nrow(sorted_df) * percentage / 100)
+  if (top_n == 0) {
+    top_n <- 1
+  }
+  top_land <- sum(sorted_df$tierra[1:top_n])
+  total_land <- sum(df$tierra)
+  return(top_land / total_land * 100)
+}
+
+# Apply the function to each region
+percentages <- data %>% group_by(Region) %>% summarize(
+  `1%_Land_Control` = calculate_land_percentage(cur_data(), 1),
+  `5%_Land_Control` = calculate_land_percentage(cur_data(), 5),
+  `10%_Land_Control` = calculate_land_percentage(cur_data(), 10)
+)
+
+# Adjust region names
+percentages <- percentages %>%
+  mutate(Region = case_when(
+    Region == "DEL LIBERTADOR GENERAL BERNARDO O'HIGGINS" ~ "DE O'HIGGINS",
+    Region == "METROPOLITANA DE SANTIAGO" ~ "METROPOLITANA",
+    TRUE ~ Region
+  ))
+
+# Order the regions
+region_order <- c("DE VALPARAÍSO", "METROPOLITANA", "DE O'HIGGINS", "DEL MAULE", "DEL BIOBÍO")
+percentages <- percentages %>%
+  mutate(Region = factor(Region, levels = region_order)) %>%
+  arrange(Region)
+
+# Print the result
+print(percentages)
